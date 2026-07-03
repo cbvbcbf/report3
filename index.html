@@ -1,0 +1,401 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>加权排列组合匹配算法 - Sexoristics</title>
+    <style>
+        :root {
+            --primary: #6c5ce7;
+            --secondary: #a29bfe;
+            --bg: #f4f6f9;
+            --card: #ffffff;
+            --text: #2d3436;
+            --shadow: 0 10px 30px rgba(108, 92, 231, 0.1);
+            --rank-1: #ff6b6b; --rank-2: #feca57; --rank-3: #48dbfb; --rank-4: #1dd1a1;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { background-color: var(--bg); color: var(--text); padding: 20px; display: flex; justify-content: center; }
+        .app-container { width: 100%; max-width: 700px; background: var(--card); border-radius: 20px; padding: 30px; box-shadow: var(--shadow); }
+        h1 { text-align: center; color: var(--primary); font-size: 24px; margin-bottom: 10px; }
+        .subtitle { text-align: center; color: #636e72; font-size: 14px; margin-bottom: 30px; }
+        
+        .module { display: none; }
+        .module.active { display: block; animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .module-title { font-size: 18px; color: var(--primary); border-bottom: 2px solid var(--secondary); padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between;}
+        .progress { font-size: 14px; color: #636e72; }
+
+        .question-item { margin-bottom: 20px; background: #fafafa; padding: 15px; border-radius: 12px; border: 1px solid #eee; }
+        .q-tag { display: inline-block; background: var(--secondary); color: #fff; font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 4px; margin-bottom: 8px; }
+        .q-text { font-weight: 500; margin-bottom: 12px; line-height: 1.5; }
+        .options { display: flex; justify-content: space-between; align-items: center; gap: 5px; }
+        .option-label { display: flex; flex-direction: column; align-items: center; font-size: 11px; color: #636e72; cursor: pointer; flex: 1; }
+        .option-label input[type="radio"] { appearance: none; -webkit-appearance: none; width: 18px; height: 18px; border: 2px solid #ddd; border-radius: 50%; margin-bottom: 4px; cursor: pointer; transition: 0.2s; }
+        .option-label input[type="radio"]:checked { border-color: var(--primary); background-color: var(--primary); box-shadow: inset 0 0 0 4px #fff; }
+        .option-label span { text-align: center; }
+
+        .btn-group { display: flex; justify-content: space-between; margin-top: 30px; gap: 15px; }
+        .btn { background: #e0e0e0; color: #555; border: none; padding: 12px 20px; border-radius: 50px; font-size: 16px; font-weight: 600; cursor: pointer; flex: 1; transition: 0.2s; }
+        .btn:active { transform: scale(0.95); }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-primary:not(:disabled):hover { background: #5a4bd1; }
+
+        /* 结果页 */
+        #result-page { display: none; text-align: center; }
+        #result-page h2 { color: var(--primary); margin-bottom: 15px; }
+        .result-box { background: #f8f9fa; padding: 20px; border-radius: 15px; margin: 20px 0; }
+        .result-label { font-size: 14px; color: #636e72; }
+        .result-value { font-size: 42px; font-weight: bold; color: var(--text); margin: 10px 0; letter-spacing: 8px; }
+        
+        .score-extra { color: #888; font-size: 12px; margin-top: 5px; }
+        
+        /* 16项特质排名展示区 */
+        .trait-rank-container { margin: 20px 0; text-align: left; background: #f9f9f9; border-radius: 12px; padding: 15px; }
+        .trait-item { display: flex; align-items: center; margin-bottom: 8px; padding: 5px 10px; border-radius: 8px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.02); position: relative;}
+        .trait-item.top-1 { background: #fff0f0; border-left: 4px solid var(--rank-1); }
+        .trait-item.top-2 { background: #fff8e1; border-left: 4px solid var(--rank-2); }
+        .trait-item.top-3 { background: #e3f6fc; border-left: 4px solid var(--rank-3); }
+        .trait-item.top-4 { background: #e6f9ed; border-left: 4px solid var(--rank-4); }
+        .trait-label { width: 40px; font-weight: bold; font-size: 16px; color: #555; flex-shrink: 0; }
+        .trait-bar-container { flex: 1; height: 14px; background: #eee; border-radius: 10px; margin: 0 10px; overflow: hidden; position: relative; }
+        .trait-bar { height: 100%; border-radius: 10px; background: #b2bec3; transition: width 1s ease; }
+        .top-1 .trait-bar { background: var(--rank-1); }
+        .top-2 .trait-bar { background: var(--rank-2); }
+        .top-3 .trait-bar { background: var(--rank-3); }
+        .top-4 .trait-bar { background: var(--rank-4); }
+        .trait-score { font-size: 14px; font-weight: bold; width: 30px; text-align: right; color: #2d3436; flex-shrink: 0;}
+        
+        .result-desc { font-size: 15px; line-height: 1.6; color: #444; text-align: left; background: white; padding: 15px; border-radius: 10px; margin-top: 20px; border-left: 4px solid var(--primary); }
+
+        @media (max-width: 480px) {
+            .options { flex-direction: row; }
+            .option-label input[type="radio"] { width: 24px; height: 24px; }
+            .q-text { font-size: 15px; }
+            .result-value { font-size: 36px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <h1>🧬 Sexoristics</h1>
+    <div class="subtitle">加权匹配四字母代码</div>
+
+    <div id="main-content"></div>
+    
+    <div id="controls" class="btn-group">
+        <button id="prevBtn" class="btn" onclick="prevModule()">上一页</button>
+        <button id="nextBtn" class="btn btn-primary" onclick="nextModule()">下一页</button>
+        <button id="submitBtn" class="btn btn-primary" onclick="submitTest()" style="display: none;">计算最佳匹配概率</button>
+    </div>
+
+    <div id="result-page">
+        <h2>您的性类型学四字母代码</h2>
+        <div class="result-box">
+            <div class="result-label">基于24种排列匹配，最高加权概率的结果</div>
+            <div class="result-value" id="final-code">----</div>
+            <div class="score-extra" id="probability-score">匹配权重得分: 0 分</div>
+        </div>
+        
+        <div class="trait-rank-container" id="trait-rank-list">
+            <!-- 16个特质的排行展示区 -->
+        </div>
+
+        <div class="result-desc" id="final-desc">
+            <strong>算法说明：</strong><br>
+            <i>系统遍历了 K/A/V/D 的 24 种全排列，分别将每种排列与 `1X、2Y、3Z、4W` 的加权特质得分匹配，算出每种排列的最终权重。得分最高的即为您最终的组合代码。</i>
+        </div>
+        <button class="btn btn-primary" onclick="location.reload()" style="margin-top:20px; width:100%;">重新测试</button>
+    </div>
+</div>
+
+<script>
+    // 1. 全新的 80 道题，严格对应 16 个特质的 5 道题
+    const questions = [
+        // ===== 1K (5题) =====
+        { id: 1, trait: '1K', text: '在亲密互动中，我喜欢完全主导伴侣的身体动作，不喜欢别人插手。' },
+        { id: 2, trait: '1K', text: '我很少征求伴侣的意见，因为我非常清楚自己想要什么。' },
+        { id: 3, trait: '1K', text: '我往往在私下、隐蔽的地方，按照自己的计划去释放和控制欲望。' },
+        { id: 4, trait: '1K', text: '我是一个目标非常明确的人，在亲密方面也从不拖泥带水。' },
+        { id: 5, trait: '1K', text: '掌控伴侣的愉悦对我来说是与生俱来的权利。' },
+        // ===== 2K (5题) =====
+        { id: 6, trait: '2K', text: '我的最大乐趣在于服务伴侣的身体需求，让对方得到充分的放松。' },
+        { id: 7, trait: '2K', text: '我非常耐心，愿意花大量时间去探索伴侣身体的敏感点和喜好。' },
+        { id: 8, trait: '2K', text: '只要伴侣感到舒服和满意，我就会感到极大的成就感和满足感。' },
+        { id: 9, trait: '2K', text: '在互动过程中，我会实时根据伴侣的身体反应来调整我的动作和力度。' },
+        { id: 10, trait: '2K', text: '我乐意满足伴侣提出的任何身体请求，不认为这是什么难事。' },
+        // ===== 3K (5题) =====
+        { id: 11, trait: '3K', text: '我非常害怕和抗拒伴侣突如其来的触碰或动作。' },
+        { id: 12, trait: '3K', text: '在完全黑暗的环境中，如果伴侣靠近我，我会本能地感到紧张和不安。' },
+        { id: 13, trait: '3K', text: '我的身体极度缺乏安全感，只有经过极长时间考验的人才能触碰我。' },
+        { id: 14, trait: '3K', text: '在亲密接触中，我经常会感到紧张、不知所措，甚至想要逃避。' },
+        { id: 15, trait: '3K', text: '身体接触对我来说是一件充满巨大精神压力的事情。' },
+        // ===== 4K (5题) =====
+        { id: 16, trait: '4K', text: '在亲密互动中，我通常是顺其自然的那一方，既不主动也不排斥。' },
+        { id: 17, trait: '4K', text: '我不觉得自己在性方面有非常强烈的需求和渴望。' },
+        { id: 18, trait: '4K', text: '只要伴侣主动发起，我就会配合，但我很少主动去要求对方。' },
+        { id: 19, trait: '4K', text: '对我来说，身体上的愉悦并不是最重要的，气氛合适就行。' },
+        { id: 20, trait: '4K', text: '我在感情和身体关系上是个朴实无华、随遇而安的人。' },
+
+        // ===== 1A (5题) =====
+        { id: 21, trait: '1A', text: '在亲密时，我毫不掩饰自己的声音，喜欢用热烈的表达来释放。' },
+        { id: 22, trait: '1A', text: '我习惯用充满挑逗和刺激的言语去调动伴侣的情绪。' },
+        { id: 23, trait: '1A', text: '我内心非常渴望伴侣能在言语和声音上被我彻底征服。' },
+        { id: 24, trait: '1A', text: '不管在什么场合，只要我想，我就可以大胆表达内心的欲望。' },
+        { id: 25, trait: '1A', text: '在我看来，声音、呻吟和激情的话语是性爱中最刺激的部分。' },
+        // ===== 2A (5题) =====
+        { id: 26, trait: '2A', text: '我很擅长用富有节奏的语言和对话来全面调动伴侣的愉悦氛围。' },
+        { id: 27, trait: '2A', text: '只要伴侣想听，我可以轻易地说出各种让人感到兴奋和迷恋的话语。' },
+        { id: 28, trait: '2A', text: '在亲密对话中，我经常是那个掌控话题方向、主导气氛的人。' },
+        { id: 29, trait: '2A', text: '我常常会通过言语去迎合伴侣的喜好，从而快速建立信任和好感。' },
+        { id: 30, trait: '2A', text: '我认为不断的沟通和倾诉是拉近两个人身体距离的最佳桥梁。' },
+        // ===== 3A (5题) =====
+        { id: 31, trait: '3A', text: '我非常害怕在伴侣面前发出声音，更不敢说出那些露骨或粗俗的话语。' },
+        { id: 32, trait: '3A', text: '表面上我在亲密互动中非常克制和礼貌，但其实内心经常幻想激烈表达。' },
+        { id: 33, trait: '3A', text: '只有伴侣轻轻地鼓励我或者给我一个明确的信号，我才敢发声。' },
+        { id: 34, trait: '3A', text: '在亲密时刻，我总是试图让自己看起来乖巧、聪明、有礼貌。' },
+        { id: 35, trait: '3A', text: '沉默和安静对目前的我来反而更有安全感。' },
+        // ===== 4A (5题) =====
+        { id: 36, trait: '4A', text: '我更喜欢安静地倾听伴侣说话，而不是自己主动去表达。' },
+        { id: 37, trait: '4A', text: '我不太在意伴侣具体说了什么，只要整体的声音氛围让我放松就行。' },
+        { id: 38, trait: '4A', text: '对我来说，沉静的音乐或轻快的声音比伴侣的言语更能让我放松。' },
+        { id: 39, trait: '4A', text: '我在对话中习惯被动接受对方的语言引导，很少主动开起新话题。' },
+        { id: 40, trait: '4A', text: '我不太喜欢长篇大论的交流，觉得点到为止就好。' },
+
+        // ===== 1V (5题) =====
+        { id: 41, trait: '1V', text: '我心中对伴侣的外在形象、穿着打扮有着一个极高的完美标准。' },
+        { id: 42, trait: '1V', text: '如果伴侣穿得或打扮得不合我意，我的性致会瞬间大打折扣。' },
+        { id: 43, trait: '1V', text: '我很在意灯光、场景布置以及自己的穿衣打扮，力求达到完美画面感。' },
+        { id: 44, trait: '1V', text: '我经常会在脑海里为伴侣设计各种不同的造型和形象。' },
+        { id: 45, trait: '1V', text: '我对美的要求极其挑剔，包括伴侣的每一个细节。' },
+        // ===== 2V (5题) =====
+        { id: 46, trait: '2V', text: '我喜欢用照片、视频或特定的视觉道具来为我们的互动创造情调。' },
+        { id: 47, trait: '2V', text: '我相信只要视觉上足够刺激和震撼，伴侣就会完全被我吸引。' },
+        { id: 48, trait: '2V', text: '我善于利用光影、装扮和姿势给对方留下难以磨灭的深刻印象。' },
+        { id: 49, trait: '2V', text: '我喜欢记录下那些视觉冲击力强、美好的瞬间。' },
+        { id: 50, trait: '2V', text: '视觉上的刺激是我用来点燃和诱惑伴侣激情的最佳武器。' },
+        // ===== 3V (5题) =====
+        { id: 51, trait: '3V', text: '我经常沉浸在自我的白热化幻想中，甚至不需要伴侣真的在场也能获得满足。' },
+        { id: 52, trait: '3V', text: '现实中的形象往往让我感到自卑，我更愿意依赖脑海中完美的想象。' },
+        { id: 53, trait: '3V', text: '我必须要依靠脑海中的画面和幻想，才能真正进入到快乐的状态。' },
+        { id: 54, trait: '3V', text: '我非常害怕伴侣在互动时盯着我看，怕他看到我不完美的状态。' },
+        { id: 55, trait: '3V', text: '我总是对自己或者伴侣的外表感到过度的焦虑和不自信。' },
+        // ===== 4V (5题) =====
+        { id: 56, trait: '4V', text: '我对伴侣的身材、长相或打扮的要求非常宽容，没有太高的标准。' },
+        { id: 57, trait: '4V', text: '我缺乏所谓的视觉想象力，很难仅仅依靠言语在脑海中勾勒生动的画面。' },
+        { id: 58, trait: '4V', text: '比起自己想象，我更依赖伴侣直接提供的视觉信息来调动情绪。' },
+        { id: 59, trait: '4V', text: '我对那些刻意营造的浪漫视觉场景感到比较麻木。' },
+        { id: 60, trait: '4V', text: '在亲密关系中，我不太在意伴侣好看不好看，只要人对了就行。' },
+
+        // ===== 1D (5题) =====
+        { id: 61, trait: '1D', text: '我在潜意识里把亲密行为看作是一项需要精确执行和监督的任务。' },
+        { id: 62, trait: '1D', text: '我内心规定了一套我认为“正确”的做事方式和时间节点。' },
+        { id: 63, trait: '1D', text: '如果伴侣没有按照我认定的规则行事，我会感到非常愤怒和沮丧。' },
+        { id: 64, trait: '1D', text: '在关系中，我常常不自觉地充当“监督者”的角色。' },
+        { id: 65, trait: '1D', text: '对我而言，履行亲密关系中的责任和规则，比享受过程更重要。' },
+        // ===== 2D (5题) =====
+        { id: 66, trait: '2D', text: '我习惯用清晰、明确的逻辑话语来告诉伴侣“应该怎么做”。' },
+        { id: 67, trait: '2D', text: '我喜欢用文字、笔记或明确的提前计划来部署亲密互动的细节。' },
+        { id: 68, trait: '2D', text: '我总是能给别人提供清晰的情感建议或生活解决方案。' },
+        { id: 69, trait: '2D', text: '我认为坦诚、明确的语言是解决一切亲密关系和矛盾的关键。' },
+        { id: 70, trait: '2D', text: '我习惯于用合理、讲道理的理由去引导伴侣顺从我的节奏。' },
+        // ===== 3D (5题) =====
+        { id: 71, trait: '3D', text: '我认为亲密互动必须严格按照我所定制的方式来推进。' },
+        { id: 72, trait: '3D', text: '我极其挑剔伴侣的服务，任何一点偏差都会让我产生强烈的不满。' },
+        { id: 73, trait: '3D', text: '我需要绝对掌控整个过程，哪怕是接受服务也必须由我来指挥。' },
+        { id: 74, trait: '3D', text: '我的焦虑感只有在局面被完全掌控、完全按我的需求进行时才能缓解。' },
+        { id: 75, trait: '3D', text: '我不能忍受伴侣擅自改变我的计划或节奏。' },
+        // ===== 4D (5题) =====
+        { id: 76, trait: '4D', text: '我最讨厌的就是亲密互动中的各种规则、套路和既定流程。' },
+        { id: 77, trait: '4D', text: '我是一个极度自由散漫的人，在亲密关系中也只想“想干什么就干什么”。' },
+        { id: 78, trait: '4D', text: '如果伴侣强迫我遵守规矩或逻辑，我会本能地想要逃避或反抗。' },
+        { id: 79, trait: '4D', text: '我对纸上谈兵、制定规则和计划没有任何兴趣。' },
+        { id: 80, trait: '4D', text: '我渴望最纯粹、不受任何逻辑约束的感官狂欢。' }
+    ];
+
+    // 2. 状态管理
+    let currentModuleIndex = 0;
+    const moduleSize = 20; 
+    let answers = {}; 
+
+    // 3. 渲染逻辑 (UI 不变)
+    function renderModule(index) {
+        const start = index * moduleSize;
+        const end = start + moduleSize;
+        const moduleQuestions = questions.slice(start, end);
+        const container = document.getElementById('main-content');
+        const modNames = ['K型 - 动觉与触觉', 'A型 - 听觉与声音', 'V型 - 视觉与幻想', 'D型 - 数觉与秩序'];
+
+        let html = `<div class="module active" id="module-${index}">`;
+        html += `<div class="module-title"><span>${modNames[index]}</span><span class="progress">第 ${start+1}-${end} 题</span></div>`;
+        moduleQuestions.forEach(q => {
+            const selected = answers[q.id] || 0;
+            html += `
+                <div class="question-item">
+                    <div class="q-tag">特质 ${q.trait}</div>
+                    <div class="q-text">${q.id}. ${q.text}</div>
+                    <div class="options">
+                        ${[1,2,3,4,5].map(val => `
+                            <label class="option-label">
+                                <input type="radio" name="q${q.id}" value="${val}" ${selected == val ? 'checked' : ''} onchange="saveAnswer(${q.id}, ${val})">
+                                <span>${val}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        });
+        html += `</div>`;
+        container.innerHTML = html;
+
+        document.getElementById('prevBtn').style.display = index === 0 ? 'none' : 'block';
+        document.getElementById('nextBtn').style.display = index === 3 ? 'none' : 'block';
+        document.getElementById('submitBtn').style.display = index === 3 ? 'block' : 'none';
+    }
+
+    function saveAnswer(id, value) { answers[id] = value; }
+
+    function nextModule() {
+        if (checkCurrentModuleComplete()) {
+            if (currentModuleIndex < 3) {
+                currentModuleIndex++;
+                renderModule(currentModuleIndex);
+                window.scrollTo(0, 0);
+            }
+        } else { alert('本页还有题目未作答，请完成所有题目后再进入下一页。'); }
+    }
+
+    function prevModule() {
+        if (currentModuleIndex > 0) {
+            currentModuleIndex--;
+            renderModule(currentModuleIndex);
+            window.scrollTo(0, 0);
+        }
+    }
+
+    function checkCurrentModuleComplete() {
+        const start = currentModuleIndex * moduleSize;
+        const end = start + moduleSize;
+        for (let i = start; i < end; i++) {
+            if (!answers[questions[i].id]) return false;
+        }
+        return true;
+    }
+
+    // 4. 核心逻辑：排列组合加权匹配算法 (满足您“概率”和“不可重复”的要求)
+    function submitTest() {
+        if (!checkCurrentModuleComplete()) {
+            alert('请完成所有题目！');
+            return;
+        }
+
+        // 1. 计算16种特质的总分
+        let traitScores = {
+            '1K': 0, '2K': 0, '3K': 0, '4K': 0,
+            '1A': 0, '2A': 0, '3A': 0, '4A': 0,
+            '1V': 0, '2V': 0, '3V': 0, '4V': 0,
+            '1D': 0, '2D': 0, '3D': 0, '4D': 0
+        };
+        for (let id in answers) {
+            const val = answers[id];
+            const q = questions.find(item => item.id == id);
+            if (!q) continue;
+            traitScores[q.trait] += val;
+        }
+
+        // 2. 获取 K, A, V, D 的所有排列组合
+        const letters = ['K', 'A', 'V', 'D'];
+        const permutations = getPermutations(letters);
+
+        // 3. 遍历 24 种排列，计算“加权概率得分”
+        let bestPermutation = "";
+        let bestScore = -1;
+
+        for (let perm of permutations) {
+            // perm 是数组，例如 ['K', 'V', 'A', 'D']
+            // 取 第1位 的得分，对应 1 + 字母
+            let score = 
+                traitScores['1' + perm[0]] + 
+                traitScores['2' + perm[1]] + 
+                traitScores['3' + perm[2]] + 
+                traitScores['4' + perm[3]];
+            
+            // 只要得分更高，就更新最佳匹配
+            if (score > bestScore) {
+                bestScore = score;
+                bestPermutation = perm.join('');
+            }
+        }
+
+        // 4. 渲染结果页
+        document.getElementById('main-content').style.display = 'none';
+        document.getElementById('controls').style.display = 'none';
+        document.getElementById('result-page').style.display = 'block';
+        
+        document.getElementById('final-code').innerText = bestPermutation;
+        document.getElementById('probability-score').innerText = `匹配权重得分: ${bestScore} 分`;
+
+        // 5. 渲染16特质的柱状图排行榜 (高分到低分)
+        const rankContainer = document.getElementById('trait-rank-list');
+        let rankHTML = '';
+        const rankColors = ['top-1', 'top-2', 'top-3', 'top-4'];
+        
+        // 对特质得分进行降序排列以便在柱状图上展示
+        let scoreArray = [];
+        for (let key in traitScores) {
+            scoreArray.push({ trait: key, score: traitScores[key] });
+        }
+        scoreArray.sort((a, b) => b.score - a.score);
+        
+        scoreArray.forEach((item, index) => {
+            const trait = item.trait;
+            const score = item.score;
+            const percent = (score / 25) * 100; 
+            let rankClass = '';
+            if (index < 4) { rankClass = rankColors[index]; }
+            
+            rankHTML += `
+                <div class="trait-item ${rankClass}">
+                    <div class="trait-label">${trait}</div>
+                    <div class="trait-bar-container">
+                        <div class="trait-bar" style="width: ${percent}%;"></div>
+                    </div>
+                    <div class="trait-score">${score}</div>
+                </div>
+            `;
+        });
+        rankContainer.innerHTML = rankHTML;
+
+        // 6. 解释输出
+        document.getElementById('final-desc').innerHTML = `
+            <strong>算法解析：</strong><br>
+            <b>排位1：${bestPermutation[0]}</b> ← 对应的特质得分是 <b>1${bestPermutation[0]}</b> 的得分<br>
+            <b>排位2：${bestPermutation[1]}</b> ← 对应的特质得分是 <b>2${bestPermutation[1]}</b> 的得分<br>
+            <b>排位3：${bestPermutation[2]}</b> ← 对应的特质得分是 <b>3${bestPermutation[2]}</b> 的得分<br>
+            <b>排位4：${bestPermutation[3]}</b> ← 对应的特质得分是 <b>4${bestPermutation[3]}</b> 的得分<br><br>
+            系统将 <b>K、A、V、D</b> 4个字母进行了 <b>24种全排列</b> 计算，每种组合取其对应的“1位、2位、3位、4位”特质得分。最终选出权重得分最高（<b>${bestScore}分</b>）的组合作为您的最终结果。
+        `;
+    }
+
+    // 辅助函数：获取数组的全排列
+    function getPermutations(array) {
+        if (array.length <= 1) return [array];
+        let result = [];
+        for (let i = 0; i < array.length; i++) {
+            const first = array[i];
+            const rest = array.slice(0, i).concat(array.slice(i + 1));
+            const perms = getPermutations(rest);
+            for (let perm of perms) {
+                result.push([first, ...perm]);
+            }
+        }
+        return result;
+    }
+
+    renderModule(0);
+</script>
+</body>
+</html>
